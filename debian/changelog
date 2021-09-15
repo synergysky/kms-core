@@ -1,3 +1,9 @@
+kms-core (7.0.0-1~debify11pexip+1) pexip-bullseye; urgency=medium
+
+  * Build for pexip-bullseye.
+
+ -- Daniel Pocock <daniel@pocock.pro>  Wed, 15 Sep 2021 11:56:51 +0200
+
 kms-core (7.0.0-1~debify11+1) debify-bullseye; urgency=medium
 
   * Build for debify-bullseye.
