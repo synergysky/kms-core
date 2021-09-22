@@ -50,10 +50,14 @@ GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
 #define PARAM_MIN_PORT "minPort"
 #define PARAM_MAX_PORT "maxPort"
 #define PARAM_MTU "mtu"
+#define PARAM_EXTERNAL_IPV4 "externalIPv4"
+#define PARAM_EXTERNAL_IPV6 "externalIPv6"
 
 #define PROP_MIN_PORT "min-port"
 #define PROP_MAX_PORT "max-port"
 #define PROP_MTU "mtu"
+#define PROP_EXTERNAL_IPV4 "external-ipv4"
+#define PROP_EXTERNAL_IPV6 "external-ipv6"
 
 /* Fixed point conversion macros */
 #define FRIC        65536.                  /* 2^16 as a double */
@@ -112,6 +116,30 @@ BaseRtpEndpointImpl::BaseRtpEndpointImpl (const boost::property_tree::ptree
     g_object_set (G_OBJECT (element), PROP_MTU, mtu, NULL);
   } else {
     GST_DEBUG ("No predefined RTP MTU found in config; using default");
+  }
+
+  std::string externalIPv4;
+
+  if (getConfigValue <std::string, BaseRtpEndpoint> (&externalIPv4,
+      PARAM_EXTERNAL_IPV4) ) {
+    GST_INFO ("Predefined external IPv4 address: %s", externalIPv4.c_str() );
+    g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV4,
+                  externalIPv4.c_str(), NULL);
+  } else {
+    GST_DEBUG ("No predefined external IPv4 address found in config;"
+               " you can set one or default to random selection");
+  }
+
+  std::string externalIPv6;
+
+  if (getConfigValue <std::string, BaseRtpEndpoint> (&externalIPv6,
+      PARAM_EXTERNAL_IPV6) ) {
+    GST_INFO ("Predefined external IPv6 address: %s", externalIPv6.c_str() );
+    g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV6,
+                  externalIPv6.c_str(), NULL);
+  } else {
+    GST_DEBUG ("No predefined external IPv6 address found in config;"
+               " you can set one or default to random selection");
   }
 }
 
@@ -391,6 +419,54 @@ BaseRtpEndpointImpl::setMtu (int mtu)
 {
   GST_INFO ("Set MTU for RTP: %d", mtu);
   g_object_set (G_OBJECT (element), PROP_MTU, mtu, NULL);
+}
+
+std::string
+BaseRtpEndpointImpl::getExternalIPv4 ()
+{
+  std::string externalIPv4;
+  gchar *ret;
+
+  g_object_get (G_OBJECT (element), PROP_EXTERNAL_IPV4, &ret, NULL);
+
+  if (ret != nullptr) {
+    externalIPv4 = std::string (ret);
+    g_free (ret);
+  }
+
+  return externalIPv4;
+}
+
+void
+BaseRtpEndpointImpl::setExternalIPv4 (const std::string &externalIPv4)
+{
+  GST_INFO ("Set external IPv4 address: %s", externalIPv4.c_str() );
+  g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV4,
+                externalIPv4.c_str(), NULL);
+}
+
+std::string
+BaseRtpEndpointImpl::getExternalIPv6 ()
+{
+  std::string externalIPv6;
+  gchar *ret;
+
+  g_object_get (G_OBJECT (element), PROP_EXTERNAL_IPV6, &ret, NULL);
+
+  if (ret != nullptr) {
+    externalIPv6 = std::string (ret);
+    g_free (ret);
+  }
+
+  return externalIPv6;
+}
+
+void
+BaseRtpEndpointImpl::setExternalIPv6 (const std::string &externalIPv6)
+{
+  GST_INFO ("Set external IPv6 address: %s", externalIPv6.c_str() );
+  g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV6,
+                externalIPv6.c_str(), NULL);
 }
 
 /******************/
