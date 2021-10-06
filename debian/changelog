@@ -1,3 +1,9 @@
+kms-core (7.0.0-1~debify11+2) debify-bullseye; urgency=medium
+
+  * Add patch for RTPEndpoint externalIP.
+
+ -- Daniel Pocock <daniel@pocock.pro>  Wed, 06 Oct 2021 21:52:23 +0200
+
 kms-core (7.0.0-1~debify11+1) debify-bullseye; urgency=medium
 
   * Build for debify-bullseye.
