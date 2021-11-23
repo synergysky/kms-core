@@ -39,6 +39,10 @@ if(HAS_WARNING_DATE_TIME)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=date-time")
 endif()
 
+# FIXME Disable error from deprecated function gst_element_get_request_pad(),
+#       should use gst_element_request_pad_simple() instead.
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=deprecated-declarations")
+
 # Decide between std::regex or boost::regex
 include(CheckCXXSourceCompiles)
 set(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -83,7 +87,7 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -DHAVE_CONFIG_H")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_CONFIG_H")
 
 set(GST_REQUIRED ^1.7.1)
-set(JSON_RPC_REQUIRED ^6.0.0)
+set(JSON_RPC_REQUIRED ^7.0.0)
 set(SIGCPP_REQUIRED ^2.0.10)
 set(GLIBMM_REQUIRED ^2.37)
 
@@ -97,13 +101,13 @@ else()
   generic_find(LIBNAME Boost REQUIRED COMPONENTS filesystem regex system thread unit_test_framework)
 endif()
 
-generic_find(LIBNAME gstreamer-1.5 VERSION ${GST_REQUIRED} REQUIRED)
-generic_find(LIBNAME gstreamer-base-1.5 VERSION ${GST_REQUIRED} REQUIRED)
-generic_find(LIBNAME gstreamer-video-1.5 VERSION ${GST_REQUIRED} REQUIRED)
-generic_find(LIBNAME gstreamer-check-1.5 VERSION ${GST_REQUIRED})
-generic_find(LIBNAME gstreamer-sdp-1.5 VERSION ${GST_REQUIRED} REQUIRED)
-generic_find(LIBNAME gstreamer-pbutils-1.5 VERSION ${GST_REQUIRED} REQUIRED)
-generic_find(LIBNAME gstreamer-rtp-1.5 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-1.0 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-base-1.0 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-video-1.0 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-check-1.0 VERSION ${GST_REQUIRED})
+generic_find(LIBNAME gstreamer-sdp-1.0 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-pbutils-1.0 VERSION ${GST_REQUIRED} REQUIRED)
+generic_find(LIBNAME gstreamer-rtp-1.0 VERSION ${GST_REQUIRED} REQUIRED)
 
 generic_find(LIBNAME KmsJsonRpc VERSION ${JSON_RPC_REQUIRED} REQUIRED)
 generic_find(LIBNAME sigc++-2.0 VERSION ${SIGCPP_REQUIRED} REQUIRED)
@@ -112,7 +116,7 @@ generic_find(LIBNAME uuid REQUIRED)
 
 find_package(LibVpx REQUIRED)
 
-set(CMAKE_INSTALL_GST_PLUGINS_DIR ${CMAKE_INSTALL_LIBDIR}/gstreamer-1.5)
+set(CMAKE_INSTALL_GST_PLUGINS_DIR ${CMAKE_INSTALL_LIBDIR}/gstreamer-1.0)
 
 enable_testing()
 

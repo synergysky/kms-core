@@ -69,7 +69,11 @@ create_parser_for_caps (const GstCaps * caps)
       parser_factory = NULL;
   }
 
-  if (parser_factory != NULL) {
+  if ((parser_factory != NULL) &&
+    (g_strcmp0 (gst_plugin_feature_get_name(parser_factory),
+      "rawaudioparse") != 0) &&
+    (g_strcmp0 (gst_plugin_feature_get_name(parser_factory),
+      "rawvideoparse") != 0)) {
     parser = gst_element_factory_create (parser_factory, NULL);
   } else {
     parser = kms_utils_element_factory_make ("capsfilter", "parsetreebin");
