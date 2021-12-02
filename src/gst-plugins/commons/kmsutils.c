@@ -476,11 +476,11 @@ discont_detection_probe (GstPad * pad, GstPadProbeInfo * info, gpointer data)
     if (!buffer_is_keyframe (buffer)) {
       GST_WARNING_OBJECT (
           pad, "DISCONTINUITY at non-keyframe; will drop until keyframe");
-      kms_utils_drop_until_keyframe (pad, FALSE);
+      //kms_utils_drop_until_keyframe (pad, FALSE);
 
       // The buffer represents a stream discontinuity, so drop it here to avoid
       // causing artifacts in the downstream decoder.
-      return GST_PAD_PROBE_DROP;
+      //return GST_PAD_PROBE_DROP;
     }
   }
 
