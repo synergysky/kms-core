@@ -49,6 +49,8 @@ public:
 
   virtual ~BaseRtpEndpointImpl ();
 
+  virtual void sendPictureFastUpdate ();
+
   virtual int getMinVideoRecvBandwidth ();
   virtual void setMinVideoRecvBandwidth (int minVideoRecvBandwidth);
 
@@ -73,6 +75,7 @@ public:
   virtual std::string getExternalIPv6 ();
   virtual void setExternalIPv6 (const std::string &externalIPv6);
 
+  sigc::signal<void, KeyframeRequired> signalKeyframeRequired;
   sigc::signal<void, MediaStateChanged> signalMediaStateChanged;
   sigc::signal<void, ConnectionStateChanged> signalConnectionStateChanged;
 
@@ -95,12 +98,14 @@ protected:
 private:
 
   std::string formatGstStructure (const GstStructure *stats);
+  gulong keyframeRequiredHandlerId;
   std::shared_ptr<MediaState> current_media_state;
   gulong mediaStateChangedHandlerId;
   std::shared_ptr<ConnectionState> current_conn_state;
   gulong connStateChangedHandlerId;
   std::recursive_mutex mutex;
 
+  void keyframeRequired ();
   void updateMediaState (guint new_state);
   void updateConnectionState (gchar *sessId, guint new_state);
 
