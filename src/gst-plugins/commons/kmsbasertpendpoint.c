@@ -240,6 +240,8 @@ struct _KmsBaseRtpEndpointPrivate
 
   /* RTP settings */
   guint mtu;
+  gchar *external_ipv4;
+  gchar *external_ipv6;
 
   /* RTP statistics */
   KmsBaseRTPStats stats;
@@ -259,6 +261,7 @@ enum
 {
   MEDIA_START,
   MEDIA_STOP,
+  KEYFRAME_REQUIRED,
   MEDIA_STATE_CHANGED,
   GET_CONNECTION_STATE,
   CONNECTION_STATE_CHANGED,
@@ -277,6 +280,8 @@ static guint obj_signals[LAST_SIGNAL] = { 0 };
 #define MIN_VIDEO_SEND_BW_DEFAULT 100  // kbps
 #define MAX_VIDEO_SEND_BW_DEFAULT 500  // kbps
 #define DEFAULT_MTU 1200 // Bytes
+#define DEFAULT_EXTERNAL_IPV4 NULL
+#define DEFAULT_EXTERNAL_IPV6 NULL
 
 enum
 {
@@ -295,6 +300,8 @@ enum
   PROP_SUPPORT_FEC,
   PROP_OFFER_DIR,
   PROP_MTU,
+  PROP_EXTERNAL_IPV4,
+  PROP_EXTERNAL_IPV6,
   PROP_LAST
 };
 
@@ -912,6 +919,7 @@ kms_base_rtp_endpoint_request_rtp_sink (KmsIRtpSessionManager * manager,
     pad =
         gst_element_get_request_pad (self->priv->rtpbin,
         VIDEO_RTPBIN_RECV_RTP_SINK);
+    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
   } else {
     GST_ERROR_OBJECT (self, "'%s' not valid", media_str);
     return NULL;
@@ -939,6 +947,7 @@ kms_base_rtp_endpoint_request_rtp_src (KmsIRtpSessionManager * manager,
         gst_element_get_static_pad (self->priv->rtpbin,
         VIDEO_RTPBIN_SEND_RTP_SRC);
 
+    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
     kms_utils_drop_until_keyframe (pad, TRUE);
 
     /* TODO: check if needed for audio */
@@ -2472,6 +2481,14 @@ kms_base_rtp_endpoint_set_property (GObject * object, guint property_id,
     case PROP_MTU:
       self->priv->mtu = g_value_get_uint (value);
       break;
+    case PROP_EXTERNAL_IPV4:
+      g_free (self->priv->external_ipv4);
+      self->priv->external_ipv4 = g_value_dup_string (value);
+      break;
+    case PROP_EXTERNAL_IPV6:
+      g_free (self->priv->external_ipv6);
+      self->priv->external_ipv6 = g_value_dup_string (value);
+      break;
     case PROP_OFFER_DIR:
       self->priv->offer_dir = g_value_get_enum (value);
       break;
@@ -2540,6 +2557,12 @@ kms_base_rtp_endpoint_get_property (GObject * object, guint property_id,
       break;
     case PROP_MTU:
       g_value_set_uint (value, self->priv->mtu);
+      break;
+    case PROP_EXTERNAL_IPV4:
+      g_value_set_string (value, self->priv->external_ipv4);
+      break;
+    case PROP_EXTERNAL_IPV6:
+      g_value_set_string (value, self->priv->external_ipv6);
       break;
     case PROP_SUPPORT_FEC:
       g_value_set_boolean (value, self->priv->support_fec);
@@ -3001,6 +3024,18 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
           0, G_MAXUINT, DEFAULT_MTU,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (object_class, PROP_EXTERNAL_IPV4,
+      g_param_spec_string ("external-ipv4",
+          "externalIPv4",
+          "External (public) IPv4 address of the media server",
+          DEFAULT_EXTERNAL_IPV4, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_EXTERNAL_IPV6,
+      g_param_spec_string ("external-ipv6",
+          "externalIPv6",
+          "External (public) IPv6 address of the media server",
+          DEFAULT_EXTERNAL_IPV6, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (object_class, PROP_SUPPORT_FEC,
       g_param_spec_boolean ("support-fec", "Forward error correction supported",
           "Forward error correction supported", FALSE,
@@ -3022,6 +3057,13 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
       G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, connection_state_changed), NULL,
       NULL, __kms_core_marshal_VOID__STRING_ENUM, G_TYPE_NONE, 2, G_TYPE_STRING,
       KMS_TYPE_CONNECTION_STATE);
+
+  obj_signals[KEYFRAME_REQUIRED] =
+      g_signal_new ("remote-req-key-unit",
+      G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, keyframe_required), NULL,
+      NULL, g_cclosure_marshal_VOID__ENUM, G_TYPE_NONE, 0);
 
   obj_signals[MEDIA_STATE_CHANGED] =
       g_signal_new ("media-state-changed",
@@ -3482,6 +3524,8 @@ kms_base_rtp_endpoint_init (KmsBaseRtpEndpoint * self)
   self->priv->max_port = DEFAULT_MAX_PORT;
 
   self->priv->mtu = DEFAULT_MTU;
+  self->priv->external_ipv4 = DEFAULT_EXTERNAL_IPV4;
+  self->priv->external_ipv6 = DEFAULT_EXTERNAL_IPV6;
 
   self->priv->offer_dir = DEFAULT_OFFER_DIR;
 }
