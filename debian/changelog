@@ -1,3 +1,9 @@
+kms-core (7.0.0+dp1-1~debify11+1) debify-bullseye; urgency=medium
+
+  * Packaging my branch.
+
+ -- Daniel Pocock <daniel@pocock.pro>  Fri, 10 Dec 2021 14:24:16 +0100
+
 kms-core (7.0.0-1~debify11+2) debify-bullseye; urgency=medium
 
   * Add patch for RTPEndpoint externalIP.
