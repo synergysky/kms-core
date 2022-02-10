@@ -1,3 +1,9 @@
+kms-core (7.0.0+dp2-1~debify11+1) debify-bullseye; urgency=medium
+
+  * Packaging my branch.
+
+ -- Daniel Pocock <daniel@pocock.pro>  Thu, 10 Feb 2022 23:34:10 +0100
+
 kms-core (7.0.0+dp1-1~debify11+1) debify-bullseye; urgency=medium
 
   * Packaging my branch.
