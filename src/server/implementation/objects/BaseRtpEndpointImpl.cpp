@@ -69,13 +69,6 @@ void BaseRtpEndpointImpl::postConstructor ()
 {
   SdpEndpointImpl::postConstructor ();
 
-  keyframeRequiredHandlerId = register_signal_handler (G_OBJECT (element),
-                               "remote-req-key-unit",
-                               std::function <void (GstElement *) > (std::bind (
-                                     &BaseRtpEndpointImpl::keyframeRequired, this) ),
-                               std::dynamic_pointer_cast<BaseRtpEndpointImpl>
-                               (shared_from_this() ) );
-
   mediaStateChangedHandlerId = register_signal_handler (G_OBJECT (element),
                                "media-state-changed",
                                std::function <void (GstElement *, guint) > (std::bind (
@@ -99,8 +92,6 @@ BaseRtpEndpointImpl::BaseRtpEndpointImpl (const boost::property_tree::ptree
     const std::string &factoryName, bool useIpv6) :
   SdpEndpointImpl (config, parent, factoryName, useIpv6)
 {
-  keyframeRequiredHandlerId = 0;
-
   current_media_state = std::make_shared <MediaState>
                         (MediaState::DISCONNECTED);
   mediaStateChangedHandlerId = 0;
@@ -154,31 +145,12 @@ BaseRtpEndpointImpl::BaseRtpEndpointImpl (const boost::property_tree::ptree
 
 BaseRtpEndpointImpl::~BaseRtpEndpointImpl ()
 {
-  if (keyframeRequiredHandlerId > 0) {
-    unregister_signal_handler (element, keyframeRequiredHandlerId);
-  }
-
   if (mediaStateChangedHandlerId > 0) {
     unregister_signal_handler (element, mediaStateChangedHandlerId);
   }
 
   if (connStateChangedHandlerId > 0) {
     unregister_signal_handler (element, connStateChangedHandlerId);
-  }
-}
-
-void
-BaseRtpEndpointImpl::keyframeRequired ()
-{
-  GST_ERROR ("keyframe required from remote");
-  try {
-    KeyframeRequired event (shared_from_this (),
-        KeyframeRequired::getName ());
-    sigcSignalEmit(signalKeyframeRequired, event);
-  } catch (const std::bad_weak_ptr &e) {
-    // shared_from_this()
-    GST_ERROR ("BUG creating %s: %s", KeyframeRequired::getName ().c_str (),
-        e.what ());
   }
 }
 
@@ -254,19 +226,6 @@ BaseRtpEndpointImpl::updateConnectionState (gchar *sessId, guint new_state)
           ConnectionStateChanged::getName ().c_str (), e.what ());
     }
   }
-}
-
-void BaseRtpEndpointImpl::sendPictureFastUpdate ()
-{
-  GST_ERROR ("sendPictureFastUpdate is incomplete");
-  GstElement *e = element ; // getGstreamerElement ();
-  if(!e)
-  {
-    GST_ERROR ("getGstreamerElement returned NULL");
-    return;
-  }
-  gboolean result;
-  g_signal_emit_by_name (element, "request-local-key-frame", &result);
 }
 
 int BaseRtpEndpointImpl::getMinVideoRecvBandwidth ()

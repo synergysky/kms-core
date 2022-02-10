@@ -58,8 +58,6 @@ struct _KmsBaseRtpEndpointClass
 {
   KmsBaseSdpEndpointClass parent_class;
 
-  void (*keyframe_required) (KmsBaseRtpEndpoint * self);
-
   void (*media_start) (KmsBaseRtpEndpoint * self, KmsMediaType type,
     gboolean local);
   void (*media_stop) (KmsBaseRtpEndpoint * self, KmsMediaType type,

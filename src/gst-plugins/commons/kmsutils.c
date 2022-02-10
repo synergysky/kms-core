@@ -443,8 +443,6 @@ drop_until_keyframe_probe (GstPad * pad, GstPadProbeInfo * info,
   set_dropping (pad, FALSE);
   GST_OBJECT_UNLOCK (pad);
 
-  g_signal_emit_by_name ((gst_pad_get_parent_element(pad)), "remote-req-key-unit");
-
   GST_DEBUG_OBJECT (pad, "Finish dropping buffers until keyframe");
 
   /* So this buffer is a keyframe we don't need this probe any more */
