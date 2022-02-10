@@ -170,13 +170,12 @@ BaseRtpEndpointImpl::~BaseRtpEndpointImpl ()
 void
 BaseRtpEndpointImpl::keyframeRequired ()
 {
-  GST_ERROR ("keyframe required from remote");
+  GST_ERROR ("must ask remote for a keyframe");
   try {
     KeyframeRequired event (shared_from_this (),
         KeyframeRequired::getName ());
     sigcSignalEmit(signalKeyframeRequired, event);
   } catch (const std::bad_weak_ptr &e) {
-    // shared_from_this()
     GST_ERROR ("BUG creating %s: %s", KeyframeRequired::getName ().c_str (),
         e.what ());
   }
@@ -258,8 +257,7 @@ BaseRtpEndpointImpl::updateConnectionState (gchar *sessId, guint new_state)
 
 void BaseRtpEndpointImpl::sendPictureFastUpdate ()
 {
-  GST_ERROR ("sendPictureFastUpdate is incomplete");
-  GstElement *e = element ; // getGstreamerElement ();
+  GstElement *e = element;
   if(!e)
   {
     GST_ERROR ("getGstreamerElement returned NULL");
@@ -267,6 +265,9 @@ void BaseRtpEndpointImpl::sendPictureFastUpdate ()
   }
   gboolean result;
   g_signal_emit_by_name (element, "request-local-key-frame", &result);
+  if(!result) {
+    GST_ERROR ("request-local-key-frame: failed");
+  }
 }
 
 int BaseRtpEndpointImpl::getMinVideoRecvBandwidth ()

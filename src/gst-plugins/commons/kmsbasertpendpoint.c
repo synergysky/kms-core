@@ -261,11 +261,11 @@ enum
 {
   MEDIA_START,
   MEDIA_STOP,
-  KEYFRAME_REQUIRED,
   MEDIA_STATE_CHANGED,
   GET_CONNECTION_STATE,
   CONNECTION_STATE_CHANGED,
   SIGNAL_REQUEST_LOCAL_KEY_FRAME,
+  KEYFRAME_REQUIRED,
   LAST_SIGNAL
 };
 
@@ -319,6 +319,24 @@ is_proto (const gchar * term, const gchar * opt, const gchar * proto)
   g_free (pattern);
 
   return ret;
+}
+
+static GstPadProbeReturn
+request_keyframes (GstPad * pad, GstPadProbeInfo * info, gpointer data)
+{
+  GstEvent *event = gst_pad_probe_info_get_event (info);
+  KmsBaseRtpEndpoint *self = KMS_BASE_RTP_ENDPOINT (data);
+
+  if (gst_video_event_is_force_key_unit (event)) {
+    GST_WARNING_OBJECT (pad, "Sending keyframe request");
+    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
+    // FIXME: should send an event downstream to indicate the request is
+    // being processed, see
+    // https://gstreamer.freedesktop.org/documentation/video/video-event.html?gi-language=c#gst_video_event_new_downstream_force_key_unit
+    return GST_PAD_PROBE_OK;
+  }
+
+  return GST_PAD_PROBE_OK;
 }
 
 /* RTP hdrext begin */
@@ -919,7 +937,6 @@ kms_base_rtp_endpoint_request_rtp_sink (KmsIRtpSessionManager * manager,
     pad =
         gst_element_get_request_pad (self->priv->rtpbin,
         VIDEO_RTPBIN_RECV_RTP_SINK);
-    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
   } else {
     GST_ERROR_OBJECT (self, "'%s' not valid", media_str);
     return NULL;
@@ -947,7 +964,6 @@ kms_base_rtp_endpoint_request_rtp_src (KmsIRtpSessionManager * manager,
         gst_element_get_static_pad (self->priv->rtpbin,
         VIDEO_RTPBIN_SEND_RTP_SRC);
 
-    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
     kms_utils_drop_until_keyframe (pad, TRUE);
 
     /* TODO: check if needed for audio */
@@ -963,6 +979,8 @@ kms_base_rtp_endpoint_request_rtp_src (KmsIRtpSessionManager * manager,
           kms_base_rtp_endpoint_add_rtp_hdr_ext_probe,
           data, hdr_ext_data_destroy_pointer);
     }
+    gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, request_keyframes,
+        self, NULL);
   } else {
     GST_ERROR_OBJECT (self, "'%s' not valid", media_str);
     return NULL;
@@ -1149,6 +1167,8 @@ kms_base_rtp_endpoint_request_local_key_frame (KmsBaseRtpEndpoint * self)
     return FALSE;
   }
 
+  // the rtpbin component is downstream of the encoder so we
+  // have to send the request upstream
   event =
       gst_video_event_new_upstream_force_key_unit (GST_CLOCK_TIME_NONE,
       TRUE, 0);
@@ -1160,6 +1180,14 @@ kms_base_rtp_endpoint_request_local_key_frame (KmsBaseRtpEndpoint * self)
   }
 
   return ret;
+}
+
+static void
+kms_base_rtp_endpoint_keyframe_required (KmsBaseRtpEndpoint * self)
+{
+  // BaseRtpEndpoint listens for the same signal and sends it up
+  // to the application over the WebSocket API KeyframeRequired
+  GST_WARNING_OBJECT (self, "Require keyframe from peer");
 }
 
 /* Connect input elements begin */
@@ -2933,6 +2961,8 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
   klass->get_connection_state = kms_base_rtp_endpoint_get_connection_state;
   klass->request_local_key_frame =
       kms_base_rtp_endpoint_request_local_key_frame;
+  klass->keyframe_required =
+      kms_base_rtp_endpoint_keyframe_required;
 
   base_endpoint_class = KMS_BASE_SDP_ENDPOINT_CLASS (klass);
   base_endpoint_class->create_session_internal =
@@ -3058,13 +3088,6 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
       NULL, __kms_core_marshal_VOID__STRING_ENUM, G_TYPE_NONE, 2, G_TYPE_STRING,
       KMS_TYPE_CONNECTION_STATE);
 
-  obj_signals[KEYFRAME_REQUIRED] =
-      g_signal_new ("remote-req-key-unit",
-      G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, keyframe_required), NULL,
-      NULL, g_cclosure_marshal_VOID__ENUM, G_TYPE_NONE, 0);
-
   obj_signals[MEDIA_STATE_CHANGED] =
       g_signal_new ("media-state-changed",
       G_TYPE_FROM_CLASS (klass),
@@ -3095,6 +3118,13 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
       G_SIGNAL_ACTION | G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, request_local_key_frame), NULL,
       NULL, __kms_core_marshal_BOOLEAN__VOID, G_TYPE_BOOLEAN, 0);
+
+  obj_signals[KEYFRAME_REQUIRED] =
+      g_signal_new ("remote-req-key-unit",
+      G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_ACTION | G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, keyframe_required), NULL,
+      NULL, __kms_core_marshal_VOID__VOID, G_TYPE_NONE, 0);
 
   g_type_class_add_private (klass, sizeof (KmsBaseRtpEndpointPrivate));
 
