@@ -50,10 +50,14 @@ GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
 #define PARAM_MIN_PORT "minPort"
 #define PARAM_MAX_PORT "maxPort"
 #define PARAM_MTU "mtu"
+#define PARAM_EXTERNAL_IPV4 "externalIPv4"
+#define PARAM_EXTERNAL_IPV6 "externalIPv6"
 
 #define PROP_MIN_PORT "min-port"
 #define PROP_MAX_PORT "max-port"
 #define PROP_MTU "mtu"
+#define PROP_EXTERNAL_IPV4 "external-ipv4"
+#define PROP_EXTERNAL_IPV6 "external-ipv6"
 
 /* Fixed point conversion macros */
 #define FRIC        65536.                  /* 2^16 as a double */
@@ -64,6 +68,13 @@ namespace kurento
 void BaseRtpEndpointImpl::postConstructor ()
 {
   SdpEndpointImpl::postConstructor ();
+
+  keyframeRequiredHandlerId = register_signal_handler (G_OBJECT (element),
+                               "remote-req-key-unit",
+                               std::function <void (GstElement *) > (std::bind (
+                                     &BaseRtpEndpointImpl::keyframeRequired, this) ),
+                               std::dynamic_pointer_cast<BaseRtpEndpointImpl>
+                               (shared_from_this() ) );
 
   mediaStateChangedHandlerId = register_signal_handler (G_OBJECT (element),
                                "media-state-changed",
@@ -88,6 +99,8 @@ BaseRtpEndpointImpl::BaseRtpEndpointImpl (const boost::property_tree::ptree
     const std::string &factoryName, bool useIpv6) :
   SdpEndpointImpl (config, parent, factoryName, useIpv6)
 {
+  keyframeRequiredHandlerId = 0;
+
   current_media_state = std::make_shared <MediaState>
                         (MediaState::DISCONNECTED);
   mediaStateChangedHandlerId = 0;
@@ -113,16 +126,58 @@ BaseRtpEndpointImpl::BaseRtpEndpointImpl (const boost::property_tree::ptree
   } else {
     GST_DEBUG ("No predefined RTP MTU found in config; using default");
   }
+
+  std::string externalIPv4;
+
+  if (getConfigValue <std::string, BaseRtpEndpoint> (&externalIPv4,
+      PARAM_EXTERNAL_IPV4) ) {
+    GST_INFO ("Predefined external IPv4 address: %s", externalIPv4.c_str() );
+    g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV4,
+                  externalIPv4.c_str(), NULL);
+  } else {
+    GST_DEBUG ("No predefined external IPv4 address found in config;"
+               " you can set one or default to random selection");
+  }
+
+  std::string externalIPv6;
+
+  if (getConfigValue <std::string, BaseRtpEndpoint> (&externalIPv6,
+      PARAM_EXTERNAL_IPV6) ) {
+    GST_INFO ("Predefined external IPv6 address: %s", externalIPv6.c_str() );
+    g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV6,
+                  externalIPv6.c_str(), NULL);
+  } else {
+    GST_DEBUG ("No predefined external IPv6 address found in config;"
+               " you can set one or default to random selection");
+  }
 }
 
 BaseRtpEndpointImpl::~BaseRtpEndpointImpl ()
 {
+  if (keyframeRequiredHandlerId > 0) {
+    unregister_signal_handler (element, keyframeRequiredHandlerId);
+  }
+
   if (mediaStateChangedHandlerId > 0) {
     unregister_signal_handler (element, mediaStateChangedHandlerId);
   }
 
   if (connStateChangedHandlerId > 0) {
     unregister_signal_handler (element, connStateChangedHandlerId);
+  }
+}
+
+void
+BaseRtpEndpointImpl::keyframeRequired ()
+{
+  GST_ERROR ("must ask remote for a keyframe");
+  try {
+    KeyframeRequired event (shared_from_this (),
+        KeyframeRequired::getName ());
+    sigcSignalEmit(signalKeyframeRequired, event);
+  } catch (const std::bad_weak_ptr &e) {
+    GST_ERROR ("BUG creating %s: %s", KeyframeRequired::getName ().c_str (),
+        e.what ());
   }
 }
 
@@ -197,6 +252,21 @@ BaseRtpEndpointImpl::updateConnectionState (gchar *sessId, guint new_state)
       GST_ERROR ("BUG creating %s: %s",
           ConnectionStateChanged::getName ().c_str (), e.what ());
     }
+  }
+}
+
+void BaseRtpEndpointImpl::sendPictureFastUpdate ()
+{
+  GstElement *e = element;
+  if(!e)
+  {
+    GST_ERROR ("getGstreamerElement returned NULL");
+    return;
+  }
+  gboolean result;
+  g_signal_emit_by_name (element, "request-local-key-frame", &result);
+  if(!result) {
+    GST_ERROR ("request-local-key-frame: failed");
   }
 }
 
@@ -391,6 +461,54 @@ BaseRtpEndpointImpl::setMtu (int mtu)
 {
   GST_INFO ("Set MTU for RTP: %d", mtu);
   g_object_set (G_OBJECT (element), PROP_MTU, mtu, NULL);
+}
+
+std::string
+BaseRtpEndpointImpl::getExternalIPv4 ()
+{
+  std::string externalIPv4;
+  gchar *ret;
+
+  g_object_get (G_OBJECT (element), PROP_EXTERNAL_IPV4, &ret, NULL);
+
+  if (ret != nullptr) {
+    externalIPv4 = std::string (ret);
+    g_free (ret);
+  }
+
+  return externalIPv4;
+}
+
+void
+BaseRtpEndpointImpl::setExternalIPv4 (const std::string &externalIPv4)
+{
+  GST_INFO ("Set external IPv4 address: %s", externalIPv4.c_str() );
+  g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV4,
+                externalIPv4.c_str(), NULL);
+}
+
+std::string
+BaseRtpEndpointImpl::getExternalIPv6 ()
+{
+  std::string externalIPv6;
+  gchar *ret;
+
+  g_object_get (G_OBJECT (element), PROP_EXTERNAL_IPV6, &ret, NULL);
+
+  if (ret != nullptr) {
+    externalIPv6 = std::string (ret);
+    g_free (ret);
+  }
+
+  return externalIPv6;
+}
+
+void
+BaseRtpEndpointImpl::setExternalIPv6 (const std::string &externalIPv6)
+{
+  GST_INFO ("Set external IPv6 address: %s", externalIPv6.c_str() );
+  g_object_set (G_OBJECT (element), PROP_EXTERNAL_IPV6,
+                externalIPv6.c_str(), NULL);
 }
 
 /******************/

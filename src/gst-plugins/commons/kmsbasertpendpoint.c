@@ -240,6 +240,8 @@ struct _KmsBaseRtpEndpointPrivate
 
   /* RTP settings */
   guint mtu;
+  gchar *external_ipv4;
+  gchar *external_ipv6;
 
   /* RTP statistics */
   KmsBaseRTPStats stats;
@@ -263,6 +265,7 @@ enum
   GET_CONNECTION_STATE,
   CONNECTION_STATE_CHANGED,
   SIGNAL_REQUEST_LOCAL_KEY_FRAME,
+  KEYFRAME_REQUIRED,
   LAST_SIGNAL
 };
 
@@ -277,6 +280,8 @@ static guint obj_signals[LAST_SIGNAL] = { 0 };
 #define MIN_VIDEO_SEND_BW_DEFAULT 100  // kbps
 #define MAX_VIDEO_SEND_BW_DEFAULT 500  // kbps
 #define DEFAULT_MTU 1200 // Bytes
+#define DEFAULT_EXTERNAL_IPV4 NULL
+#define DEFAULT_EXTERNAL_IPV6 NULL
 
 enum
 {
@@ -295,6 +300,8 @@ enum
   PROP_SUPPORT_FEC,
   PROP_OFFER_DIR,
   PROP_MTU,
+  PROP_EXTERNAL_IPV4,
+  PROP_EXTERNAL_IPV6,
   PROP_LAST
 };
 
@@ -312,6 +319,24 @@ is_proto (const gchar * term, const gchar * opt, const gchar * proto)
   g_free (pattern);
 
   return ret;
+}
+
+static GstPadProbeReturn
+request_keyframes (GstPad * pad, GstPadProbeInfo * info, gpointer data)
+{
+  GstEvent *event = gst_pad_probe_info_get_event (info);
+  KmsBaseRtpEndpoint *self = KMS_BASE_RTP_ENDPOINT (data);
+
+  if (gst_video_event_is_force_key_unit (event)) {
+    GST_WARNING_OBJECT (pad, "Sending keyframe request");
+    g_signal_emit (self, obj_signals[KEYFRAME_REQUIRED], 0);
+    // FIXME: should send an event downstream to indicate the request is
+    // being processed, see
+    // https://gstreamer.freedesktop.org/documentation/video/video-event.html?gi-language=c#gst_video_event_new_downstream_force_key_unit
+    return GST_PAD_PROBE_OK;
+  }
+
+  return GST_PAD_PROBE_OK;
 }
 
 /* RTP hdrext begin */
@@ -954,6 +979,8 @@ kms_base_rtp_endpoint_request_rtp_src (KmsIRtpSessionManager * manager,
           kms_base_rtp_endpoint_add_rtp_hdr_ext_probe,
           data, hdr_ext_data_destroy_pointer);
     }
+    gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM, request_keyframes,
+        self, NULL);
   } else {
     GST_ERROR_OBJECT (self, "'%s' not valid", media_str);
     return NULL;
@@ -1140,6 +1167,8 @@ kms_base_rtp_endpoint_request_local_key_frame (KmsBaseRtpEndpoint * self)
     return FALSE;
   }
 
+  // the rtpbin component is downstream of the encoder so we
+  // have to send the request upstream
   event =
       gst_video_event_new_upstream_force_key_unit (GST_CLOCK_TIME_NONE,
       TRUE, 0);
@@ -1151,6 +1180,14 @@ kms_base_rtp_endpoint_request_local_key_frame (KmsBaseRtpEndpoint * self)
   }
 
   return ret;
+}
+
+static void
+kms_base_rtp_endpoint_keyframe_required (KmsBaseRtpEndpoint * self)
+{
+  // BaseRtpEndpoint listens for the same signal and sends it up
+  // to the application over the WebSocket API KeyframeRequired
+  GST_WARNING_OBJECT (self, "Require keyframe from peer");
 }
 
 /* Connect input elements begin */
@@ -2481,6 +2518,14 @@ kms_base_rtp_endpoint_set_property (GObject * object, guint property_id,
     case PROP_MTU:
       self->priv->mtu = g_value_get_uint (value);
       break;
+    case PROP_EXTERNAL_IPV4:
+      g_free (self->priv->external_ipv4);
+      self->priv->external_ipv4 = g_value_dup_string (value);
+      break;
+    case PROP_EXTERNAL_IPV6:
+      g_free (self->priv->external_ipv6);
+      self->priv->external_ipv6 = g_value_dup_string (value);
+      break;
     case PROP_OFFER_DIR:
       self->priv->offer_dir = g_value_get_enum (value);
       break;
@@ -2549,6 +2594,12 @@ kms_base_rtp_endpoint_get_property (GObject * object, guint property_id,
       break;
     case PROP_MTU:
       g_value_set_uint (value, self->priv->mtu);
+      break;
+    case PROP_EXTERNAL_IPV4:
+      g_value_set_string (value, self->priv->external_ipv4);
+      break;
+    case PROP_EXTERNAL_IPV6:
+      g_value_set_string (value, self->priv->external_ipv6);
       break;
     case PROP_SUPPORT_FEC:
       g_value_set_boolean (value, self->priv->support_fec);
@@ -2919,6 +2970,8 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
   klass->get_connection_state = kms_base_rtp_endpoint_get_connection_state;
   klass->request_local_key_frame =
       kms_base_rtp_endpoint_request_local_key_frame;
+  klass->keyframe_required =
+      kms_base_rtp_endpoint_keyframe_required;
 
   base_endpoint_class = KMS_BASE_SDP_ENDPOINT_CLASS (klass);
   base_endpoint_class->create_session_internal =
@@ -3010,6 +3063,18 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
           0, G_MAXUINT, DEFAULT_MTU,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (object_class, PROP_EXTERNAL_IPV4,
+      g_param_spec_string ("external-ipv4",
+          "externalIPv4",
+          "External (public) IPv4 address of the media server",
+          DEFAULT_EXTERNAL_IPV4, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_EXTERNAL_IPV6,
+      g_param_spec_string ("external-ipv6",
+          "externalIPv6",
+          "External (public) IPv6 address of the media server",
+          DEFAULT_EXTERNAL_IPV6, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (object_class, PROP_SUPPORT_FEC,
       g_param_spec_boolean ("support-fec", "Forward error correction supported",
           "Forward error correction supported", FALSE,
@@ -3062,6 +3127,13 @@ kms_base_rtp_endpoint_class_init (KmsBaseRtpEndpointClass * klass)
       G_SIGNAL_ACTION | G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, request_local_key_frame), NULL,
       NULL, __kms_core_marshal_BOOLEAN__VOID, G_TYPE_BOOLEAN, 0);
+
+  obj_signals[KEYFRAME_REQUIRED] =
+      g_signal_new ("remote-req-key-unit",
+      G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_ACTION | G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET (KmsBaseRtpEndpointClass, keyframe_required), NULL,
+      NULL, __kms_core_marshal_VOID__VOID, G_TYPE_NONE, 0);
 
   g_type_class_add_private (klass, sizeof (KmsBaseRtpEndpointPrivate));
 
@@ -3491,6 +3563,8 @@ kms_base_rtp_endpoint_init (KmsBaseRtpEndpoint * self)
   self->priv->max_port = DEFAULT_MAX_PORT;
 
   self->priv->mtu = DEFAULT_MTU;
+  self->priv->external_ipv4 = DEFAULT_EXTERNAL_IPV4;
+  self->priv->external_ipv6 = DEFAULT_EXTERNAL_IPV6;
 
   self->priv->offer_dir = DEFAULT_OFFER_DIR;
 }
