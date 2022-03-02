@@ -3174,7 +3174,7 @@ kms_base_rtp_endpoint_rtpbin_on_new_ssrc (GstElement * rtpbin, guint session,
   KmsBaseRtpEndpoint *self = KMS_BASE_RTP_ENDPOINT (user_data);
 
   KMS_ELEMENT_LOCK (self);
-  GST_DEBUG_OBJECT (self, "synergysky: new ssrc found %u", ssrc);
+  GST_WARNING_OBJECT (self, "synergysky: new ssrc found new: %u , existing: %u", ssrc, self->priv->audio_config->ssrc);
   switch (session) {
     case AUDIO_RTP_SESSION:
       if (self->priv->audio_config->ssrc != 0) {

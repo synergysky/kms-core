@@ -988,6 +988,7 @@ kms_element_connect_sink_target_full (KmsElement * self, GstPad * target,
   pad_name = get_sink_pad_name (type, description);
 
   pad = gst_ghost_pad_new_from_template (pad_name, target, templ);
+  GST_WARNING_OBJECT (self, "Ghostpad created: %s", pad_name);
   g_object_unref (templ);
 
   if (!pad) {
