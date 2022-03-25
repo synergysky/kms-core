@@ -986,8 +986,8 @@ kms_base_rtp_endpoint_request_rtp_src (KmsIRtpSessionManager * manager,
           kms_base_rtp_endpoint_add_rtp_hdr_ext_probe,
           data, hdr_ext_data_destroy_pointer);
     }
-    // gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM,
-    //     request_keyframes, self, NULL);
+    gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_UPSTREAM,
+        request_keyframes, self, NULL);
   } else {
     GST_ERROR_OBJECT (self, "'%s' not valid", media_str);
     return NULL;
@@ -3174,8 +3174,7 @@ kms_base_rtp_endpoint_rtpbin_on_new_ssrc (GstElement * rtpbin, guint session,
   KmsBaseRtpEndpoint *self = KMS_BASE_RTP_ENDPOINT (user_data);
 
   KMS_ELEMENT_LOCK (self);
-  GST_WARNING_OBJECT (self, "synergysky: new ssrc found new: %u , existing: %u",
-      ssrc, self->priv->audio_config->ssrc);
+  GST_WARNING_OBJECT (self, "synergysky: new ssrc found new: %u , existing: %u", ssrc, self->priv->audio_config->ssrc);
   switch (session) {
     case AUDIO_RTP_SESSION:
       if (self->priv->audio_config->ssrc != 0) {
