@@ -773,6 +773,11 @@ kms_element_get_output_element (KmsElement * self, KmsElementPadType pad_type,
     /* Set video properties to the new element */
     if (pad_type == KMS_ELEMENT_PAD_TYPE_VIDEO) {
       kms_element_set_video_output_properties (self, odata->element);
+      KMS_SET_OBJECT_PROPERTY_SAFELY (odata->element, "max-lateness", 60); // is this milliseconds?
+    }
+    else if (pad_type == KMS_ELEMENT_PAD_TYPE_AUDIO)
+    {
+        KMS_SET_OBJECT_PROPERTY_SAFELY (odata->element, "max-lateness", 60); // is this milliseconds?
     }
 
     gst_bin_add (GST_BIN (self), odata->element);
