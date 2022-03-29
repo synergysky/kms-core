@@ -65,7 +65,7 @@ G_DEFINE_TYPE (KmsAgnosticBin2, kms_agnostic_bin2, GST_TYPE_BIN);
 
 #define CONFIGURED_KEY "kms-configured-key"
 
-#define TARGET_BITRATE_DEFAULT 300000
+#define TARGET_BITRATE_DEFAULT 6000000
 #define MIN_BITRATE_DEFAULT 0
 #define MAX_BITRATE_DEFAULT G_MAXINT
 #define LEAKY_TIME 600000000    /*600 ms */
