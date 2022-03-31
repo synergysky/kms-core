@@ -104,11 +104,11 @@ static MetaUnitTest test_cases[] = {
       "avdec_h264"},
   {
         MEDIA_TYPE_AUDIO,
-        "avenc_opus",
+        "opusenc",
         "rtpopuspay",
         "rtpopusdepay",
         "opusparse",
-      "avdec_opus"},
+      "opusdec"},
   {
         MEDIA_TYPE_AUDIO,
         "mulawenc",

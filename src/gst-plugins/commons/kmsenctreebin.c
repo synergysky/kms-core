@@ -205,7 +205,7 @@ kms_enc_tree_bin_set_encoder_type (KmsEncTreeBin * self)
     self->priv->enc_type = X264;
   } else if (g_str_has_prefix (name, "openh264enc")) {
     self->priv->enc_type = OPENH264;
-  } else if (g_str_has_prefix (name, "avenc_opus")) {
+  } else if (g_str_has_prefix (name, "opusenc")) {
     self->priv->enc_type = OPUS;
   } else {
     self->priv->enc_type = UNSUPPORTED;

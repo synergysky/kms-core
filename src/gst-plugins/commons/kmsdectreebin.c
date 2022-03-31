@@ -112,7 +112,7 @@ kms_dec_tree_bin_configure (KmsDecTreeBin * self, const GstCaps * caps,
   GST_DEBUG_OBJECT (self, "Decoder found: %" GST_PTR_FORMAT, dec);
   name = gst_element_get_name (dec);
 
-  if (g_str_has_prefix (name, "avdec_opus")) {
+  if (g_str_has_prefix (name, "opusdec")) {
     g_object_set (dec, "plc", TRUE, "use-inband-fec", TRUE, NULL);
   }
 
