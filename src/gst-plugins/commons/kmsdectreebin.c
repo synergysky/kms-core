@@ -113,7 +113,7 @@ kms_dec_tree_bin_configure (KmsDecTreeBin * self, const GstCaps * caps,
   name = gst_element_get_name (dec);
 
   if (g_str_has_prefix (name, "opusdec")) {
-    g_object_set (dec, "plc", TRUE, "use-inband-fec", TRUE, NULL);
+    g_object_set (dec, "plc", TRUE, "use-inband-fec", FALSE, NULL);
   }
 
   if (g_str_has_prefix (name, "openh264dec")) {
