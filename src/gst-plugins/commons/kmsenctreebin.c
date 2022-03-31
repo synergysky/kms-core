@@ -180,7 +180,7 @@ configure_encoder (GstElement * encoder, EncoderType type, gint target_bitrate,
     case OPUS:
     {
       g_object_set (G_OBJECT (encoder), "inband-fec", TRUE,
-          "perfect-timestamp", TRUE, NULL);
+          "perfect-timestamp", FALSE, NULL);
       break;
     }
     default:
