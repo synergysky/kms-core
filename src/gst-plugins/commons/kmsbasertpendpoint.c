@@ -74,8 +74,8 @@ G_DEFINE_TYPE_WITH_CODE (KmsBaseRtpEndpoint, kms_base_rtp_endpoint,
 )
 
 #define JB_INITIAL_LATENCY 0
-#define JB_READY_AUDIO_LATENCY 60
-#define JB_READY_VIDEO_LATENCY 60
+#define JB_READY_AUDIO_LATENCY 10
+#define JB_READY_VIDEO_LATENCY 10
 #define RTCP_FB_CCM_FIR   SDP_MEDIA_RTCP_FB_CCM " " SDP_MEDIA_RTCP_FB_FIR
 #define RTCP_FB_NACK_PLI  SDP_MEDIA_RTCP_FB_NACK " " SDP_MEDIA_RTCP_FB_PLI
 
@@ -2080,7 +2080,8 @@ kms_base_rtp_endpoint_rtpbin_new_jitterbuffer (GstElement * rtpbin,
   KmsRTPSessionStats *rtp_stats;
   KmsSSRCStats *ssrc_stats;
 
-  g_object_set (jitterbuffer, "mode", 4 /* synced */ , "do-lost", TRUE,
+  g_object_set (jitterbuffer, "mode", 4 /* synced */ , "do-lost", TRUE, 
+      "drop-on-latency", TRUE,
       "latency", JB_INITIAL_LATENCY, "faststart-min-packets", 10, NULL);
 
   switch (session) {
