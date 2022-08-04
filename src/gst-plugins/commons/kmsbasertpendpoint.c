@@ -2080,7 +2080,7 @@ kms_base_rtp_endpoint_rtpbin_new_jitterbuffer (GstElement * rtpbin,
   KmsRTPSessionStats *rtp_stats;
   KmsSSRCStats *ssrc_stats;
 
-  g_object_set (jitterbuffer, "mode", 4 /* synced */ , "do-lost", TRUE, 
+  g_object_set (jitterbuffer, "mode", 1 /* was 4 synced */ , "do-lost", TRUE, 
       "drop-on-latency", TRUE,
       "latency", JB_INITIAL_LATENCY, "faststart-min-packets", 10, NULL);
 
